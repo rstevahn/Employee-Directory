@@ -13,19 +13,7 @@ window.addEventListener ('DOMContentLoaded', () => {
     let currentEmployee; // index of the current employee displayed in the modal dialog
 
     // ------------------------------------------
-    //  Function to fetch our data using the Fetch interface
-    //  params: url
-    //  returns: response or status text
-    // ------------------------------------------
-    function fetchData(url) {
-        return fetch(url)
-                .then(checkStatus)  
-                .then(res => res.json())
-                .catch(error => console.log('Looks like there was a problem!', error));
-    }
-
-    // ------------------------------------------
-    //  Function to check the response status
+    //  fetchData() helper function to check the response status
     //  params: response
     //  returns: a resolved or rejected promise
     // ------------------------------------------    
@@ -38,15 +26,32 @@ window.addEventListener ('DOMContentLoaded', () => {
     }
 
     // ------------------------------------------
-    //  Function to check for a search match
+    //  Function to fetch our data using the Fetch interface
+    //  params: url
+    //  returns: response or status text
+    // ------------------------------------------
+    function fetchData(url) {
+        return fetch(url)
+                .then(checkStatus)  
+                .then(res => res.json())
+                .catch(error => console.log('Looks like there was a problem!', error));
+    }
+
+    // ------------------------------------------
+    //  processSearch() helper function to check for a search match
     //  This function will display or hide the employee card depending on the search term
-    //  called by processSearch()
     //  params: search term, employee card, employee data
     //  returns: n/a
     // ------------------------------------------   
     function checkForMatch(searchTerm, employeeCard, employee) {
+
+        // build the employee name and location strings based on what is displayed in the card view
+
         const employeeName = employee.name.first.toLowerCase() + " " + employee.name.last.toLowerCase();
         const employeeLocation = employee.location.city.toLowerCase() + ", " + employee.location.state.toLowerCase();
+
+        // we match on name, email address or location
+
         if (employeeName.indexOf(searchTerm) > -1 || 
             employee.email.toLowerCase().indexOf(searchTerm) > -1 ||
             employeeLocation.indexOf(searchTerm) > -1) { // it's a match
@@ -58,17 +63,16 @@ window.addEventListener ('DOMContentLoaded', () => {
 
     // ------------------------------------------
     //  Function to process a search
-    //  gallery items
     //  params: event
     //  returns: n/a
     // ------------------------------------------   
     function processSearch(event) {
         const searchTerm = event.target.value.toLowerCase();
-        const employeeCards = document.querySelectorAll('div.card');
+        const employeeCards = document.querySelectorAll('div.card'); // array of all of the cards
         if (searchTerm != '') { // we have a search term
             employeeData.forEach((employee, index) => 
                 checkForMatch(searchTerm, employeeCards[index], employee));
-        } else { // make sure all cards are displayed
+        } else { // make sure all cards are displayed. some may have been hidden due to a search
             employeeCards.forEach(card => card.style.display = '');
         }
     }
@@ -127,10 +131,10 @@ window.addEventListener ('DOMContentLoaded', () => {
             <p class="modal-text">${employee.email}</p>
             <p class="modal-text cap">${employee.location.city}</p>
             <hr>
-            <p class="modal-text">${employee.phone}</p>
+            <p class="modal-text">${employee.cell}</p>
             <p class="modal-text">${employee.location.street.number} ${employee.location.street.name}, ${employee.location.city}, ${employee.location.state}  ${employee.location.postcode}</p>
             <p class="modal-text dob">Birthday: ${dobString}</p>`;
-        document.querySelector('.modal-info-container').innerHTML = innerHTML;     
+        document.querySelector('.modal-info-container').innerHTML = innerHTML; // replace the inner HTML with this
     }
 
      // --------------------------------------------
@@ -159,7 +163,7 @@ window.addEventListener ('DOMContentLoaded', () => {
         
         const cards = document.querySelectorAll('div.card');
 
-        // delete any cards that are not displayed due to a search in progress
+        // push displayed cards onto the displayedCards array
 
         cards.forEach((card, index) => {
             if (card.style.display === '') {
@@ -180,7 +184,7 @@ window.addEventListener ('DOMContentLoaded', () => {
     // --------------------------------------------
     function indexOfCurrentEmployee(cards) {
         for (let i=0; i<cards.length;i++) {
-            if (Number(cards[i].id) === currentEmployee) {
+            if (Number(cards[i].id) === currentEmployee) { // our element IDs are our index in the employeeData array
                 return i;
             }
         }
@@ -278,30 +282,55 @@ window.addEventListener ('DOMContentLoaded', () => {
             overlayElement = document.createElement('div');
             overlayElement.className = 'modal-container';
             overlayElement.innerHTML = overlayContent;
-            overlayElement.style.zIndex = '1';
+            overlayElement.style.zIndex = '1'; // this ensures that the dialog displays on top
             document.querySelector('body').appendChild(overlayElement); // add to the DOM before adding listeners
             document.getElementById('modal-close-btn').addEventListener('click', processCloseButton);
             document.getElementById('modal-prev').addEventListener('click', processPrevButton);
             document.getElementById('modal-next').addEventListener('click', processNextButton);
         }
 
-        // find the employee object corresponding to the target element
-        // and create the new '.modal-info-container' content
+        // update the current employee to this employee,
+        // and update the '.modal-info-container' content
 
-        const targetName = this.lastElementChild.firstElementChild.innerText;
-        for (let i = 0; i < employeeData.length; i++) {
-            const comparisonName = employeeData[i].name.first + ' ' + employeeData[i].name.last;
-            if (targetName === comparisonName) { // it's a match
-                currentEmployee = i;
-                generateModalInfo(i); // generate the new content
-                break; // we're done here
-            }
-        }
+        currentEmployee = Number(this.id); // 'this' is the target card element. The id is the index into employeeData
+        generateModalInfo(currentEmployee);
 
         // make sure we are displayed
 
         overlayElement.style.display = "";
     }
+    
+    // --------------------------------------------
+    //
+    // function to add the search box and create 
+    // the HTML for the employee cards
+    // param: fetched data
+    // returns: n/a
+    //
+    // --------------------------------------------
+    function createEmployeeCards(data) {
+        employeeData = data.results; // save the data for searching and for the modal dialog
+        addSearchBox(); // add the search box
+        employeeData.forEach((employee, index) => employee.index = index); // keep track of our index
+        employeeCards = generateCards(employeeData);
+    }
+
+    // --------------------------------------------
+    //
+    // function to add the employee card HTML 
+    // to the DOM, and add the event listener
+    // to each of the cards
+    // param: n/a
+    // returns: n/a
+    //
+    // --------------------------------------------
+    function updateDisplay() {
+        const gallery = document.getElementById('gallery');
+        gallery.innerHTML = employeeCards; // display the cards
+        employeeCards = ""; // no need to keep this around
+        const cardDivs = document.querySelectorAll('div.card'); // find all of the cards
+        cardDivs.forEach(div => div.addEventListener("click", displayOverlay)); // add the event listener to each card
+   }
 
     // --------------------------------------------
     //
@@ -309,17 +338,10 @@ window.addEventListener ('DOMContentLoaded', () => {
     //
     // --------------------------------------------
 
-    // fetch and display the data from the server (or an error message)
+    // fetch and display the data from the server (or display an error message)
  
     fetchData('https://randomuser.me/api/?results=12&nat=us&inc=name,email,location,phone,dob,picture')
-        .then((data) => {employeeData = data.results; // save the data for searching and for the modal dialog
-                         addSearchBox(); // add the search box
-                         employeeData.forEach((employee, index) => employee.index = index); // keep track of our index
-                         employeeCards = generateCards(employeeData);}) // generate the cards
+        .then((data) => createEmployeeCards(data)) // add the search box and generate the employee card HTML
         .catch(err => employeeCards = `<div class="card"><h3>An error has occurred:</h3><h4>${err}</h4></div>`)
-        .finally(() => {const gallery = document.getElementById('gallery');
-                        gallery.innerHTML = employeeCards; // display the cards
-                        const cardDivs = document.querySelectorAll('div.card');
-                        cardDivs.forEach(div => div.addEventListener("click", displayOverlay));
-                       }); // set up event listener for the search box
+        .finally(() => updateDisplay()); // add the HTML to the DOM and add event listeners to the cards
 });

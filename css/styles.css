@@ -16,7 +16,7 @@ html, body {
 body {
     font-family: "Nunito", sans-serif;
     text-align: center;
-    background: rgba(235, 235, 235, 0.9);
+    background-image: linear-gradient(to bottom right, dodgerblue, darkviolet, deeppink);
 }
 
 header {
@@ -90,8 +90,15 @@ header h1 {
     background: rgba(245, 245, 245, 0.9);
     border-radius: 0.25em;
     border: 1px solid rgba(50, 50, 50, 0.3);
-    transition: .4s ease-out;
+    transition-duration: .5s;
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.5, -0.5, 0.5, 1.5);
     overflow: hidden;
+    box-shadow: 5px 10px 15px;
+}
+
+.card:hover {
+    transform: scale(1.2);
 }
 
 .card-img {
