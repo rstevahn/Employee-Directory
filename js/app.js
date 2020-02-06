@@ -10,7 +10,7 @@ window.addEventListener ('DOMContentLoaded', () => {
 
     let employeeData = []; // the employee data received. used for searching and for the modal dialog data
     let employeeCards = ""; // the HTML we will generate based on the employee data received
-    let currentEmployee; // this will be set by displayOverlay(), adjusted with the prev and next buttons
+    let currentEmployee; // index of the current employee displayed in the modal dialog
 
     // ------------------------------------------
     //  Function to fetch our data using the Fetch interface
@@ -38,14 +38,66 @@ window.addEventListener ('DOMContentLoaded', () => {
     }
 
     // ------------------------------------------
-    //  Function to generate the html for the
+    //  Function to check for a search match
+    //  This function will display or hide the employee card depending on the search term
+    //  called by processSearch()
+    //  params: search term, employee card, employee data
+    //  returns: n/a
+    // ------------------------------------------   
+    function checkForMatch(searchTerm, employeeCard, employee) {
+        const employeeName = employee.name.first.toLowerCase() + " " + employee.name.last.toLowerCase();
+        const employeeLocation = employee.location.city.toLowerCase() + ", " + employee.location.state.toLowerCase();
+        if (employeeName.indexOf(searchTerm) > -1 || 
+            employee.email.toLowerCase().indexOf(searchTerm) > -1 ||
+            employeeLocation.indexOf(searchTerm) > -1) { // it's a match
+            employeeCard.style.display = ''; // display this card
+        } else { // no match
+            employeeCard.style.display = 'none'; // hide this card
+        }
+    }
+
+    // ------------------------------------------
+    //  Function to process a search
     //  gallery items
+    //  params: event
+    //  returns: n/a
+    // ------------------------------------------   
+    function processSearch(event) {
+        const searchTerm = event.target.value.toLowerCase();
+        const employeeCards = document.querySelectorAll('div.card');
+        if (searchTerm != '') { // we have a search term
+            employeeData.forEach((employee, index) => 
+                checkForMatch(searchTerm, employeeCards[index], employee));
+        } else { // make sure all cards are displayed
+            employeeCards.forEach(card => card.style.display = '');
+        }
+    }
+
+    // ------------------------------------------
+    //  Function to add the search box to the page
+    //  and add event listeners to the input elements
+    //  params: n/a
+    //  returns: n/a
+    // ------------------------------------------   
+    function addSearchBox() {
+        const searchHTML = 
+            `<form action="#" method="get">
+                <input type="search" id="search-input" class="search-input" placeholder="Search...">
+                <input type="submit" value="&#x1F50D;" id="search-submit" class="search-submit">
+             </form>`;
+        document.querySelector('div.search-container').innerHTML = searchHTML;
+        document.getElementById('search-input').addEventListener('keyup', processSearch);
+        document.getElementById('search-submit').addEventListener('submit', processSearch);
+    }
+    
+    // ------------------------------------------
+    //  Function to generate the html for the gallery items
     //  params: results array
     //  returns: innerHTML for the gallery div
     // ------------------------------------------   
     function generateCards(results) {
-        const employeeDivs = results.map(employee => 
-            `<div class="card">
+        const employeeDivs = results.map((employee, index) => 
+            `<div class="card" id="${index}">
                 <div class="card-img-container">
                     <img class="card-img" src="${employee.picture.medium}" alt="profile picture">
                 </div>
@@ -93,7 +145,49 @@ window.addEventListener ('DOMContentLoaded', () => {
         document.querySelector('.modal-container').style.display = 'none';
     }
     
-     // --------------------------------------------
+    // --------------------------------------------
+    //
+    // function to return an array of the displayed card elements
+    // param: n/a
+    // returns: array of card elements
+    //
+    // --------------------------------------------
+    function getDisplayedCards (){
+        const displayedCards = []; // the array of displayed cards we'll return
+
+        // get all of the div elements with class 'card'
+        
+        const cards = document.querySelectorAll('div.card');
+
+        // delete any cards that are not displayed due to a search in progress
+
+        cards.forEach((card, index) => {
+            if (card.style.display === '') {
+                displayedCards.push(card); // add to the displayed cards array
+            }
+        });
+
+        return displayedCards;
+    }
+    
+    // --------------------------------------------
+    //
+    // function to find the index of the current employee
+    // given an array of employee cards
+    // param: array of cards
+    // returns: the index of currentEmployee in the array
+    //
+    // --------------------------------------------
+    function indexOfCurrentEmployee(cards) {
+        for (let i=0; i<cards.length;i++) {
+            if (Number(cards[i].id) === currentEmployee) {
+                return i;
+            }
+        }
+        console.log ("Error! Current Employee not found among displayed cards!");
+    }
+   
+    // --------------------------------------------
     //
     // function to process the modal 'prev' button
     // param: event
@@ -101,10 +195,30 @@ window.addEventListener ('DOMContentLoaded', () => {
     //
     // --------------------------------------------
     function processPrevButton(event) {
-        event.preventDefault();
-        if (currentEmployee > 0) {
-            generateModalInfo(--currentEmployee);
+
+        let ourIndex; // we will calculate our index in the list of displayed cards
+
+        // get the array of displayed card div elements
+
+        const cards = getDisplayedCards();
+
+        // return if there is only one card
+
+        if (cards.length === 1) {
+            return;
         }
+
+        // determine our location in the array
+
+        ourIndex = indexOfCurrentEmployee (cards);
+
+         // if we are not the first element, update and display the previous element
+
+        if (ourIndex > 0) {
+            currentEmployee = Number(cards[ourIndex-1].id);
+            generateModalInfo(currentEmployee);
+        }
+        event.preventDefault();
     }
 
     // --------------------------------------------
@@ -115,10 +229,30 @@ window.addEventListener ('DOMContentLoaded', () => {
     //
     // --------------------------------------------
     function processNextButton(event) {
+ 
+        let ourIndex; // we will calculate our index in the list of displayed cards
+
+        // get the array of displayed card div elements
+
+        const cards = getDisplayedCards();
+
+        // return if there is only one card
+
+        if (cards.length === 1) {
+            return;
+        }
+
+        // determine our location in the array
+
+        ourIndex = indexOfCurrentEmployee(cards);
+
+         // if we are not the last element, update and display the next element
+
+        if (ourIndex < cards.length - 1) {
+            currentEmployee = Number(cards[ourIndex+1].id);
+            generateModalInfo(currentEmployee);
+        }
         event.preventDefault();
-        if (currentEmployee < employeeData.length - 1) {
-            generateModalInfo(++currentEmployee);
-        }    
     }
 
     // --------------------------------------------
@@ -159,7 +293,7 @@ window.addEventListener ('DOMContentLoaded', () => {
             const comparisonName = employeeData[i].name.first + ' ' + employeeData[i].name.last;
             if (targetName === comparisonName) { // it's a match
                 currentEmployee = i;
-                generateModalInfo(currentEmployee); // generate the new content
+                generateModalInfo(i); // generate the new content
                 break; // we're done here
             }
         }
@@ -179,6 +313,8 @@ window.addEventListener ('DOMContentLoaded', () => {
  
     fetchData('https://randomuser.me/api/?results=12&nat=us&inc=name,email,location,phone,dob,picture')
         .then((data) => {employeeData = data.results; // save the data for searching and for the modal dialog
+                         addSearchBox(); // add the search box
+                         employeeData.forEach((employee, index) => employee.index = index); // keep track of our index
                          employeeCards = generateCards(employeeData);}) // generate the cards
         .catch(err => employeeCards = `<div class="card"><h3>An error has occurred:</h3><h4>${err}</h4></div>`)
         .finally(() => {const gallery = document.getElementById('gallery');
